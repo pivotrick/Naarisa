@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { BASE, BANNER } from "../../Constants/apiRoutes.js";
+import { ikImage } from "../../utils/imageOptimization.js";
 
 const HeroSlider = () => {
   const [banners, setBanners]   = useState([]);
@@ -116,8 +117,12 @@ const HeroSlider = () => {
             >
               {/* Banner Image */}
               <img
-                src={imgUrl}
+                src={ikImage(imgUrl, isMobile ? 900 : 1600)}
                 alt="Naarisa Banner"
+                // first slide is the most important image on the page; the rest can wait
+                loading={index === 0 ? "eager" : "lazy"}
+                fetchPriority={index === 0 ? "high" : "low"}
+                decoding="async"
                 className="w-full h-full"
                 style={{
                   objectFit: "cover",

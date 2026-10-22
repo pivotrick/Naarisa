@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import useInView from "../utils/useInView.js";
-import shortkurtibanner from "../assets/Short Kurtis Banner.png";
-import longkurtibanner from "../assets/Long Kurtis Banner.png";
-import dressesbanner from "../assets/Dresses Banner.png";
-import kurtisetbanner from "../assets/Kurti Set Banner.png"
-import frontImage from "../assets/About Us Front Image.png"
-import backImage from "../assets/About Us Background Image.png"
+import shortkurtibanner from "../assets/about-short-kurtis.webp";
+import longkurtibanner from "../assets/about-long-kurtis.webp";
+import dressesbanner from "../assets/about-dresses.webp";
+import kurtisetbanner from "../assets/about-kurti-sets.webp"
+import frontImage from "../assets/about-front.webp"
+import backImage from "../assets/about-background.webp"
 
 // ── Core Values Data ──────────────────────────────────────────────────────────
 const coreValues = [
@@ -447,6 +447,8 @@ const AboutPage = () => {
               <img
                 src={item.image}
                 alt={item.title}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-auto block transition-transform duration-500 group-hover:scale-105"
               />
 

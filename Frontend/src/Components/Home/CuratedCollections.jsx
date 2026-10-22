@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import useInView from "../../utils/useInView.js";
+import { ikImage } from "../../utils/imageOptimization.js";
 import useCategoryStore, { categoryPath } from "../../Store/useCategoryStore.js";
 
 const CuratedCollections = () => {
@@ -89,8 +90,10 @@ const AnimatedCard = ({ col, index }) => {
       >
         {col.image ? (
           <img
-            src={col.image}
+            src={ikImage(col.image, 800)}
             alt={col.title}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-400 group-hover:scale-105"
           />
         ) : (
