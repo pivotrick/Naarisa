@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import ImageKit from "imagekit";
 import sharp from "sharp";
 import crypto from "crypto";
+import path from "path";
 
 dotenv.config();
 
@@ -11,37 +12,44 @@ export const imagekit = new ImageKit({
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
 
-const MAX_MEGAPIXELS = 25;
-const MAX_DIMENSION = 4000;
+// Every upload is stored as WebP, at most MAX_DIMENSION px on its longest side. Phone
+// photos are 3–10 MB, the site never shows an image wider than 1600 px, and anything that
+// uses the stored URL without an ImageKit transform (emails, admin) gets the stored file.
+const MAX_DIMENSION = 2400;
+const WEBP_QUALITY = 82;
 
-async function optimizeImage(file) {
-  const metadata = await sharp(file.buffer).metadata();
+const kb = (bytes) => Math.round(bytes / 1024);
 
-  const megapixels = (metadata.width * metadata.height) / 1_000_000;
+export async function optimizeImage(file) {
+  const baseName = path.parse(file.originalname).name;
 
-  // Already within ImageKit limit → upload original
-  if (megapixels <= MAX_MEGAPIXELS) {
-    return file.buffer;
+  try {
+    const image = sharp(file.buffer, { failOn: "none" });
+    const { width, height, format } = await image.metadata();
+
+    const output = await image
+      .rotate() // apply the camera's EXIF orientation, since the metadata is dropped
+      .resize({
+        width: MAX_DIMENSION,
+        height: MAX_DIMENSION,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({ quality: WEBP_QUALITY })
+      .toBuffer();
+
+    // A small image that is already WebP can come out bigger; keep it as it was
+    if (format === "webp" && Math.max(width, height) <= MAX_DIMENSION && output.length >= file.buffer.length) {
+      return { buffer: file.buffer, fileName: `${baseName}.webp` };
+    }
+
+    console.log(`📷 ${file.originalname}: ${kb(file.buffer.length)} KB → ${kb(output.length)} KB WebP`);
+    return { buffer: output, fileName: `${baseName}.webp` };
+  } catch (err) {
+    // A format sharp can't read (e.g. HEIC): upload the original and let ImageKit handle it
+    console.warn(`📷 ${file.originalname}: could not convert to WebP (${err.message}); uploading the original`);
+    return { buffer: file.buffer, fileName: file.originalname };
   }
-
-  console.log(
-    `📷 ${file.originalname}: ${megapixels.toFixed(
-      2
-    )} MP → resizing before upload`
-  );
-
-  return sharp(file.buffer)
-    .resize({
-      width: MAX_DIMENSION,
-      height: MAX_DIMENSION,
-      fit: "inside",
-      withoutEnlargement: true,
-    })
-    .jpeg({
-      quality: 92,
-      mozjpeg: true,
-    })
-    .toBuffer();
 }
 
 export const uploadImagesToImageKit = async (
@@ -58,11 +66,11 @@ export const uploadImagesToImageKit = async (
 
     const results = await Promise.allSettled(
       batch.map(async (file) => {
-        const processedBuffer = await optimizeImage(file);
+        const { buffer, fileName } = await optimizeImage(file);
 
         return imagekit.upload({
-          file: processedBuffer,
-          fileName: `${crypto.randomUUID()}-${file.originalname}`,
+          file: buffer,
+          fileName: `${crypto.randomUUID()}-${fileName}`,
           folder,
           useUniqueFileName: true,
         });
