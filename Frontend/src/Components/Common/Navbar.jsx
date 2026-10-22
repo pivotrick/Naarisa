@@ -11,8 +11,9 @@ import {
   FiX,
 } from "react-icons/fi";
 
-import logo from "../../assets/Naarisa logo icon.png";
+import logo from "../../assets/naarisa-logo.webp";
 import { BASE, PRODUCT } from "../../Constants/apiRoutes.js";
+import { ikImage } from "../../utils/imageOptimization.js";
 
 const BASE_URL = BASE.ROUTE;
 
@@ -688,7 +689,7 @@ const Navbar = () => {
                              hover:text-[#7c5400] transition-colors duration-200"
                       >
                         {item.image && (
-                          <img src={item.image} alt={item.name}
+                          <img src={ikImage(item.image, 120)} alt={item.name} loading="lazy" decoding="async"
                             className="h-12 w-12 rounded-lg object-cover flex-shrink-0
                                  border border-[#eadcc8]" />
                         )}

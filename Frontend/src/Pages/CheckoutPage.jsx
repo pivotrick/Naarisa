@@ -5,6 +5,41 @@ import useCheckoutStore from "../Store/useCheckoutStore.js";
 import api from "../utils/axiosInstance.js";
 import axios from "axios";
 import { ORDER, PAYMENT, USER, BASE, COUPON } from "../Constants/apiRoutes.js";
+import { ikImage } from "../utils/imageOptimization.js";
+
+// Razorpay's script is only needed on this page, so it is loaded here on demand
+// instead of in index.html, where it blocked every page from rendering.
+let razorpayScript = null;
+const loadRazorpay = () => {
+  if (window.Razorpay) return Promise.resolve(true);
+  razorpayScript ??= new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => {
+      razorpayScript = null; // allow a retry on the next attempt
+      resolve(false);
+    };
+    document.body.appendChild(script);
+  });
+  return razorpayScript;
+};
+
+// Tell the server about a completed payment. On phones the request often drops while the
+// customer switches to a UPI app and back, so network/server errors are retried. The
+// Razorpay webhook confirms the order on the server regardless of this call.
+const verifyPaymentWithRetry = async (body) => {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await api.post(PAYMENT.VERIFY, body, { timeout: 20000 });
+    } catch (err) {
+      const retriable = !err.response || err.response.status >= 500;
+      if (!retriable || attempt === 3) throw err;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+    }
+  }
+};
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const TagIcon = () => (
@@ -120,7 +155,7 @@ const OrderSummary = ({ items, subtotal, discountAmount, appliedCoupon, total, o
         <div key={item.id} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
           <div style={{ width: "60px", aspectRatio: "3/4", flexShrink: 0, overflow: "hidden", backgroundColor: "#E8DDD0" }}>
             {item.image
-              ? <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ? <img src={ikImage(item.image, 160)} alt={item.name} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ fontFamily: "'Jost', sans-serif", fontSize: "8px", color: "#8C7B6B", letterSpacing: "0.1em" }}>N</span>
               </div>
@@ -346,6 +381,11 @@ const CheckoutPage = () => {
     if (skipCartRedirect.current) return;
     if (items.length === 0) navigate("/cart");
   }, [items]);
+
+  // Start downloading the payment window while the customer fills in the form
+  useEffect(() => {
+    loadRazorpay();
+  }, []);
 
   // ── Fetch Addresses ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -583,6 +623,13 @@ const CheckoutPage = () => {
         couponCode: appliedCoupon?.code || null,
       };
 
+      // Make sure the payment window can open before reserving stock for an order
+      if (!(await loadRazorpay())) {
+        setLoading(false);
+        alert("Couldn't load the payment window. Please check your connection and try again.");
+        return;
+      }
+
       const orderRes = await api.post(ORDER.PLACE, payload);
       const { razorpayOrderId, amount, currency, keyId } = orderRes.data;
 
@@ -602,25 +649,24 @@ const CheckoutPage = () => {
         // Close checkout well before the 30-minute stock reservation expires on the server
         timeout: 900,
 
-        handler: async (response) => {
-          try {
-            const verifyRes = await api.post(PAYMENT.VERIFY, {
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-              customOrderId: orderRes.data.customOrderId,
-              userEmail: form.email || user?.email
-            });
-            skipCartRedirect.current = true;
-            console.log(verifyRes.data)
-            clearCart();
-            clearOrderSummary();
-            navigate(`/order-success/${verifyRes.data.orderId}`);
-          } catch (verifyErr) {
-            console.error("Payment verification failed:", verifyErr);
-            setLoading(false);
-            alert(verifyErr.response?.data?.message || "Payment received but verification failed. Please contact support.");
-          }
+        // Razorpay only calls this after the customer has paid, so the cart is done. The
+        // order page takes over straight away: it shows "confirming your payment" until the
+        // server has confirmed it (through this call or Razorpay's webhook, whichever is first),
+        // and also shows the outcome if the payment can't be used (e.g. a refund).
+        handler: (response) => {
+          skipCartRedirect.current = true;
+          clearCart();
+          clearOrderSummary();
+          navigate(`/order-success/${orderRes.data.orderId}`);
+          verifyPaymentWithRetry({
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+            customOrderId: orderRes.data.customOrderId,
+            userEmail: form.email || user?.email
+          }).catch((verifyErr) => {
+            console.error("Payment verification did not complete; the webhook will confirm the order:", verifyErr);
+          });
         },
 
         modal: { ondismiss: () => setLoading(false) },

@@ -195,6 +195,8 @@ const ProductCard = ({ product, index, onClick }) => {
           <img
             src={image}
             alt={product.productId?.name}
+            loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
           />
         ) : (

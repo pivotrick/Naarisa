@@ -4,6 +4,7 @@ import api from "../utils/axiosInstance.js";
 import OrderTrackingWidget from "../Components/Common/OrderTrackingWidget.jsx";
 import AddressModal from "../Components/Common/AddressModal.jsx";
 import { ORDER, USER } from "../Constants/apiRoutes.js";
+import { ikImage } from "../utils/imageOptimization.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const initials = (name = "") =>
@@ -291,8 +292,10 @@ const OrdersSection = () => {
                       <div key={i} style={{ display: "flex", gap: "10px", backgroundColor: "#F9F3EB", padding: "10px", flex: "1 1 200px" }}>
                         {item.image ? (
                           <img
-                            src={item.image}
+                            src={ikImage(item.image, 160)}
                             alt={item.productName}
+                            loading="lazy"
+                            decoding="async"
                             style={{
                               width: "44px",
                               aspectRatio: "3/4",
@@ -478,7 +481,7 @@ const WishlistSection = () => {
               <div key={variantId} style={{ position: "relative", cursor: "pointer" }} onClick={() => variant.slug && navigate(`/product/${variant.slug}`)}>
                 <div style={{ aspectRatio: "3/4", overflow: "hidden", backgroundColor: "#F5E6D0", marginBottom: "10px", position: "relative" }}>
                   {variant.images?.[0]?.url
-                    ? <img src={variant.images[0].url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ? <img src={ikImage(variant.images[0].url, 400)} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontFamily: "'Jost', sans-serif", fontSize: "10px", color: "#8C7B6B", letterSpacing: "0.1em" }}>NAARISA</span></div>
                   }
                   <button onClick={(e) => { e.stopPropagation(); handleRemove(variantId); }}

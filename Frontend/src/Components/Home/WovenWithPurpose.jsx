@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import useInView from "../../utils/useInView.js";
-import wovenwithpurpose from "../../assets/Woven with purpose.png";
+import wovenwithpurpose from "../../assets/woven-with-purpose.webp";
 
 const brandValues = [
   {

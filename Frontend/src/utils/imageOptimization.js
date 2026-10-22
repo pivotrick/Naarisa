@@ -32,6 +32,11 @@ export const buildImageUrls = (url) => {
   };
 };
 
+// An ImageKit image resized to roughly the size it is displayed at, in WebP/AVIF.
+// Anything else (e.g. images bundled with the site) is returned unchanged.
+export const ikImage = (url, width, quality = 75) =>
+  url && url.includes("ik.imagekit.io") ? withTransform(url, `w-${width},f-auto,q-${quality}`) : url;
+
 // Generate a real LQIP image (not SVG) — matches the preset in §7 of the audit.
 export const generateLQIPUrl = (url) => {
   if (!url) return "";

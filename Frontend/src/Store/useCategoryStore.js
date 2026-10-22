@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import axios from "axios";
 import { BASE, CATEGORY } from "../Constants/apiRoutes.js";
-import coOrdBanner from "../assets/Co-Ord Banner.png";
+import coOrdBanner from "../assets/co-ord-banner.webp";
 
 const TILE_IMAGES = "https://ik.imagekit.io/llcblwlng/naarisa/homepage-banners";
 

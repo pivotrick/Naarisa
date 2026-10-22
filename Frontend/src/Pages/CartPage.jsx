@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useCartStore from "../Store/useCartStore.js";
 import useCheckoutStore from "../Store/useCheckoutStore.js";
+import { ikImage } from "../utils/imageOptimization.js";
 
 // ── Trash Icon ────────────────────────────────────────────────────────────────
 const TrashIcon = () => (
@@ -36,7 +37,7 @@ const CartItem = ({ item, onRemove, onQtyChange, navigate }) => (
     <div onClick={() => navigate(`/product/${item.slug}`)} className="flex gap-4">
       <div style={{ width: "90px", aspectRatio: "3/4", flexShrink: 0, overflow: "hidden", backgroundColor: "#F5E6D0", cursor: "pointer" }}>
         {item.image ? (
-          <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={ikImage(item.image, 240)} alt={item.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ fontFamily: "'Jost', sans-serif", fontSize: "10px", color: "#8C7B6B", letterSpacing: "0.1em" }}>NAARISA</span>
